@@ -1,0 +1,92 @@
+
+\\  Python code for figure 6.1
+
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+
+p = 0.1
+s = 1 - p
+
+# Near-Markov range
+t_values = np.linspace(0, 0.02, 200)
+
+
+def conditional_mutual_information(p, t):
+    s = 1 - p
+
+    a = s**2 + t
+    b = p*s - t
+    c = p**2 + t
+
+    I = (
+        a * np.log2(a / s**2)
+        + 2 * b * np.log2(b / (p*s))
+        + c * np.log2(c / p**2)
+    )
+
+    return I
+
+
+def natural_fidelity(p, t):
+    s = 1 - p
+
+    return (
+        np.sqrt((s**2 + t) * s**2)
+        + 2 * np.sqrt((p*s - t) * p*s)
+        + np.sqrt((p**2 + t) * p**2)
+    )
+
+I_values = np.array([
+    conditional_mutual_information(p, t)
+    for t in t_values
+])
+
+F_nat_values = np.array([
+    natural_fidelity(p, t)
+    for t in t_values
+])
+
+infidelity = 1 - F_nat_values
+
+# Linear near-Markov approximation
+linear_approx = (np.log(2) / 4) * I_values
+
+
+plt.figure(figsize=(6, 4))
+
+plt.plot(
+    I_values,
+    infidelity,
+    color="blue",
+    linewidth=1.8,
+    label=r"Exact model"
+)
+
+plt.plot(
+    I_values,
+    linear_approx,
+    color="red",
+    linestyle="--",
+    linewidth=1.5,
+    label=r"$\frac{\ln 2}{4}\,I(C:R|B)$"
+)
+
+plt.xlabel(r"$I(C:R|B)$ (bits)")
+plt.ylabel(r"$1-F_{\mathrm{nat}}$")
+
+plt.title("Near-Markov scaling: infidelity is linear in CMI")
+
+plt.grid(True, alpha=0.3)
+
+plt.legend(
+    loc="upper left",
+    frameon=True
+)
+
+plt.tight_layout()
+
+plt.show()
+
+
