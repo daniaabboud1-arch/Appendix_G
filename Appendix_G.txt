@@ -5,88 +5,90 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-
-
-p = 0.1
-s = 1 - p
-
-# Near-Markov range
-t_values = np.linspace(0, 0.02, 200)
-
-
-def conditional_mutual_information(p, t):
-
+def mutual_information(p, t):
     s = 1 - p
 
-    a = s**2 + t
-    b = p * s - t
-    c = p**2 + t
+    terms = [
+        (s**2 + t) * np.log2((s**2 + t) / s**2),
+        2 * (p*s - t) * np.log2((p*s - t) / (p*s)),
+        (p**2 + t) * np.log2((p**2 + t) / p**2)
+    ]
 
-    I = (
-        a * np.log2(a / s**2)
-        + 2 * b * np.log2(b / (p * s))
-        + c * np.log2(c / p**2)
-    )
+    return sum(terms)
 
-    return I
 
 def natural_fidelity(p, t):
-
     s = 1 - p
 
     return (
-        np.sqrt((s**2 + t) * s**2)
-        + 2 * np.sqrt((p * s - t) * p * s)
-        + np.sqrt((p**2 + t) * p**2)
+        s * np.sqrt(s**2 + t)
+        + 2 * np.sqrt(p*s) * np.sqrt(p*s - t)
+        + p * np.sqrt(p**2 + t)
     )
 
-I_values = np.array([
-    conditional_mutual_information(p, t)
-    for t in t_values
-])
 
-F_nat_values = np.array([
-    natural_fidelity(p, t)
-    for t in t_values
-])
+p = 0.1
 
-# Exact natural recovery infidelity
-infidelity = 1 - F_nat_values
+# Small-t values around the Markov point
+t_values = np.linspace(-1e-3, 1e-3, 400)
 
-# 1 - F_nat ≃ (ln 2 / 4) I(C:R|B)
-y_asym = (np.log(2) / 4) * I_values
-plt.figure(figsize=(6, 4))
+I_values = []
+F_nat_values = []
+
+for t in t_values:
+
+    # Keep only admissible points
+    if (
+        -min(p**2, (1-p)**2) <= t <= p*(1-p)
+    ):
+        I = mutual_information(p, t)
+        F_nat = natural_fidelity(p, t)
+
+        I_values.append(I)
+        F_nat_values.append(F_nat)
+
+I_values = np.array(I_values)
+F_nat_values = np.array(F_nat_values)
+
+# Exact natural-recovery infidelity
+y_exact = 1 - F_nat_values
+
+# Asymptotic prediction
+y_asymptotic = (np.log(2) / 4) * I_values
+
+# Sort according to I for plotting
+order = np.argsort(I_values)
+
+I_values = I_values[order]
+y_exact = y_exact[order]
+y_asymptotic = y_asymptotic[order]
+
+plt.figure(figsize=(7, 5))
 
 plt.plot(
     I_values,
-    infidelity,
-    linewidth=1.8,
-    label=r"Exact model"
+    y_exact,
+    label=r'Exact $1-F_{\mathrm{nat}}$'
 )
 
 plt.plot(
     I_values,
-    y_asym,
-    linestyle="--",
-    linewidth=1.5,
-    label=r"$\frac{\ln 2}{4}\,I(C:R|B)$"
+    y_asymptotic,
+    '--',
+    label=r'Asymptotic $\frac{\ln 2}{4}I(C:R|B)$'
 )
 
-plt.xlabel(r"$I(C:R|B)$ (bits)")
-plt.ylabel(r"$1-F_{\mathrm{nat}}$")
+plt.xlabel(r'$I(C:R|B)$ (bits)')
+plt.ylabel(r'$1-F_{\mathrm{nat}}$')
+plt.title('Near-Markov scaling: natural-recovery infidelity')
 
-plt.title(
-    "Near-Markov scaling: infidelity is linear in CMI"
-)
-
-plt.grid(True, alpha=0.3)
-
-plt.legend(
-    loc="upper left",
-    frameon=True
-)
-
+plt.legend()
 plt.tight_layout()
+
+plt.savefig(
+    'Figure_6_1.pdf',
+    bbox_inches='tight'
+)
 
 plt.show()
 
